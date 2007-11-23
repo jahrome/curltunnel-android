@@ -127,10 +127,10 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
         args_info->user_given = 1;
         args_info->user_arg = gengetopt_strdup(optarg);
         break;
-      case 'p':
+      case 's':
         if(args_info->pass_given)
         {
-          fprintf(stderr,"curltunnel: `--pass' (`-s') option given more than once\n);
+          fprintf(stderr,"curltunnel: `--pass' (`-s') option given more than once\n");
           clear_args();
           exit(1);
         }
