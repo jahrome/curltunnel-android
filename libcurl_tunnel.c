@@ -65,9 +65,8 @@ void wait_and_act(int sockfd)
     timeout.tv_usec = (timeout_ms%1000)*1000;
 
     FD_SET(fileno(stdin), &fdread);
-    /*FD_SET(fileno(stdout), &fdwrite); Don't think this is required*/
     FD_SET(sockfd, &fdread);
-    FD_SET(sockfd, &fdwrite);
+    /* FD_SET(sockfd, &fdwrite); */
 
     rc = select(maxfd+1,
           (fd_set *)&fdread,
@@ -81,8 +80,7 @@ void wait_and_act(int sockfd)
     }
     if(rc==0){
       /* timeout! */
-      fprintf(stderr,"Timeout\n");
-      break;
+      /* fprintf(stderr,"Timeout\n"); */
     }
     /* use FD_ISSET() to check what happened, then read/write accordingly */
     if (FD_ISSET(fileno(stdin), &fdread))
@@ -90,15 +88,10 @@ void wait_and_act(int sockfd)
       if(fdcopy(fileno(stdin),sockfd))
         break;
     }
-    else if (FD_ISSET(sockfd,&fdread))
+    if (FD_ISSET(sockfd,&fdread))
     {
       if(fdcopy(sockfd,fileno(stdout)))
         break;
-    }
-    else
-    {
-      fprintf(stderr,"Something weird happened\n");
-      break;
     }
   }
 }
@@ -111,11 +104,10 @@ int main(int argc, char *argv[])
 
   /* Hard coded for convenience currently. Obviously we'll change this to
      read from the command line at some point */
-  curl_easy_setopt(hnd, CURLOPT_URL, "http://godeater.dyndns.org:443/");
-  curl_easy_setopt(hnd, CURLOPT_PROXY, "10.1.23.219:8080");
-  curl_easy_setopt(hnd, CURLOPT_PROXYUSERPWD, "gbchlb:X344ekl25");
+  curl_easy_setopt(hnd, CURLOPT_URL, "http://labb.contactor.se:443/");
+  curl_easy_setopt(hnd, CURLOPT_PROXY, "localhost:80");
   curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.16.4 (i686-pc-linux-gnu) libcurl/7.16.4 GnuTLS/1.4.4 zlib/1.2.3 c-ares/1.4.0");
-  /* curl_easy_setopt(hnd, CURLOPT_HTTPPROXYTUNNEL, 1); */
+  curl_easy_setopt(hnd, CURLOPT_HTTPPROXYTUNNEL, 1);
   curl_easy_setopt(hnd, CURLOPT_CONNECT_ONLY, 1);
   curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1);
   ret = curl_easy_perform(hnd);
