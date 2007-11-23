@@ -9,19 +9,13 @@
 
 struct gengetopt_args_info {
   char *proxy_arg;
-  char *proxyhost_arg;
-  int  proxyport_arg;
   char *user_arg;
-  char *pass_arg;
   char *dest_arg;
 
   int help_given;
   int verbose_given;
   int user_given;
-  int pass_given;
   int proxy_given;
-  int proxyhost_given;
-  int proxyport_given;
   int dest_given;
 };
 
@@ -31,8 +25,7 @@ void print_options(void)
       "\n"
       "-h       --help            Print help and exit\n"
       "-p       --proxy=STRING    Proxy host:port combination to connect to\n"
-      "-u       --user=STRING     Username to send to proxy\n"
-      "-s       --pass=STRING     Password to send to proxy\n"
+      "-u       --user=STRING     User:Password combination to send to proxy\n"
       "-d       --dest=STRING     Host:port combination to tunnel to\n"
       "-v       --verbose         Print messages about what's going on\n");
 }
@@ -61,18 +54,14 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
   args_info->help_given = 0;\
   args_info->verbose_given = 0;\
   args_info->user_given = 0;\
-  args_info->pass_given = 0;\
   args_info->proxy_given = 0;\
-  args_info->proxyhost_given = 0;\
-  args_info->proxyport_given = 0;\
   args_info->dest_given = 0;\
-  args_info->proxyport_arg = 0;\
   args_info->proxy_arg = NULL;\
-  args_info->proxyhost_arg = NULL;\
   args_info->user_arg = NULL;\
-  args_info->pass_arg = NULL;\
   args_info->dest_arg = NULL;\
 }
+  clear_args();
+
   optarg = 0;
   optind = 1;
   opterr = 1;
@@ -87,12 +76,11 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
       { "verbose", 0, NULL, 'v' },
       { "proxy", 1, NULL, 'p' },
       { "user", 1, NULL, 'u' },
-      { "pass", 1, NULL, 's' },
       { "dest", 1, NULL, 'd' },
       { NULL, 0, NULL, 0}
     };
 
-    c = getopt_long(argc,argv,"hv:p:u:s:d", long_options, &option_index);
+    c = getopt_long(argc,argv,"hv:p:u:d", long_options, &option_index);
 
     if(c==-1) break;
 
@@ -127,16 +115,6 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
         args_info->user_given = 1;
         args_info->user_arg = gengetopt_strdup(optarg);
         break;
-      case 's':
-        if(args_info->pass_given)
-        {
-          fprintf(stderr,"curltunnel: `--pass' (`-s') option given more than once\n");
-          clear_args();
-          exit(1);
-        }
-        args_info->pass_given = 1;
-        args_info->pass_arg = gengetopt_strdup(optarg);
-        break;
       case 'd':
         if(args_info->dest_given)
         {
@@ -157,29 +135,7 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
     exit(0);
   }
 
-  if(args_info->proxy_given)
-  {
-    char *phost;
-    int pport;
-
-    phost = malloc(50+1);
-
-    r = sscanf(args_info->proxy_arg, "%50[^:]:%5u", phost, &pport);
-    if(r==2)
-    {
-      args_info->proxyhost_arg=phost;
-      args_info->proxyport_arg=pport;
-      args_info->proxyhost_given = 1;
-      args_info->proxyport_given = 1;
-    }
-    else
-    {
-      fprintf(stderr,"curltunnel: Couldn't find your proxy hostname/ip\n");
-      clear_args();
-      exit(1);
-    }
-  }
-    return 0;
+  return 0;
 }
 
 int fd_read(int fd, void *buf, size_t len)
@@ -276,13 +232,17 @@ int main(int argc, char *argv[])
 {
   CURLcode ret;
   long sckt;
+  struct gengetopt_args_info args_info;
+  
+  command_line_parser(argc,argv,&args_info);
+
   CURL *hnd = curl_easy_init();
 
   /* Hard coded for convenience currently. Obviously we'll change this to
      read from the command line at some point */
-  curl_easy_setopt(hnd, CURLOPT_URL, "http://godeater.dyndns.org:443/");
-  curl_easy_setopt(hnd, CURLOPT_PROXY, "10.1.23.219:8080");
-  curl_easy_setopt(hnd, CURLOPT_PROXYUSERPWD, "gbchlb:X344ekl25");
+  curl_easy_setopt(hnd, CURLOPT_URL, args_info.dest_arg);
+  curl_easy_setopt(hnd, CURLOPT_PROXY, args_info.proxy_arg);
+  curl_easy_setopt(hnd, CURLOPT_PROXYUSERPWD, args_info.user_arg);
   curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.16.4 (i686-pc-linux-gnu) libcurl/7.16.4 GnuTLS/1.4.4 zlib/1.2.3 c-ares/1.4.0");
   curl_easy_setopt(hnd, CURLOPT_HTTPPROXYTUNNEL, 1);
   curl_easy_setopt(hnd, CURLOPT_CONNECT_ONLY, 1);
