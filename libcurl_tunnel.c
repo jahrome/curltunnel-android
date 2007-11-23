@@ -2,9 +2,185 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <curl/curl.h>
+#include <getopt.h>
 
 #define _FILE_OFFSET_BITS 64 /* for curl_off_t magic */
 #define SIZE 655536
+
+struct gengetopt_args_info {
+  char *proxy_arg;
+  char *proxyhost_arg;
+  int  proxyport_arg;
+  char *user_arg;
+  char *pass_arg;
+  char *dest_arg;
+
+  int help_given;
+  int verbose_given;
+  int user_given;
+  int pass_given;
+  int proxy_given;
+  int proxyhost_given;
+  int proxyport_given;
+  int dest_given;
+};
+
+void print_options(void)
+{
+  printf("curltunnel\nCopyright 2007 curltunnel Project\nV0.1\n"
+      "\n"
+      "-h       --help            Print help and exit\n"
+      "-p       --proxy=STRING    Proxy host:port combination to connect to\n"
+      "-u       --user=STRING     Username to send to proxy\n"
+      "-s       --pass=STRING     Password to send to proxy\n"
+      "-d       --dest=STRING     Host:port combination to tunnel to\n"
+      "-v       --verbose         Print messages about what's going on\n");
+}
+
+static char * gengetopt_strdup(char *s)
+{
+  char *n, *pn, *ps=s;
+  while(*ps) ps++;
+  n=(char *)malloc(1+ps-s);
+  if(n!=NULL)
+  {
+    for(ps=s,pn=n;*ps;ps++,pn++)
+      *pn = *ps;
+    *pn=0;
+  }
+  return n;
+}
+
+int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info *args_info)
+{
+  int c;
+  int r;
+
+#define clear_args()\
+{\
+  args_info->help_given = 0;\
+  args_info->verbose_given = 0;\
+  args_info->user_given = 0;\
+  args_info->pass_given = 0;\
+  args_info->proxy_given = 0;\
+  args_info->proxyhost_given = 0;\
+  args_info->proxyport_given = 0;\
+  args_info->dest_given = 0;\
+  args_info->proxyport_arg = 0;\
+  args_info->proxy_arg = NULL;\
+  args_info->proxyhost_arg = NULL;\
+  args_info->user_arg = NULL;\
+  args_info->pass_arg = NULL;\
+  args_info->dest_arg = NULL;\
+}
+  optarg = 0;
+  optind = 1;
+  opterr = 1;
+  optopt = '?';
+
+  while(1)
+  {
+    int option_index = 0;
+
+    static struct option long_options[] = {
+      { "help", 0, NULL, 'h' },
+      { "verbose", 0, NULL, 'v' },
+      { "proxy", 1, NULL, 'p' },
+      { "user", 1, NULL, 'u' },
+      { "pass", 1, NULL, 's' },
+      { "dest", 1, NULL, 'd' },
+      { NULL, 0, NULL, 0}
+    };
+
+    c = getopt_long(argc,argv,"hv:p:u:s:d", long_options, &option_index);
+
+    if(c==-1) break;
+
+    switch(c)
+    {
+      case 'h':
+        clear_args();
+        print_options();
+        exit(0);
+      case 'v':
+        args_info->verbose_given = !(args_info->verbose_given);
+        if(args_info->verbose_given)
+          printf("Verbose mode on\n");
+        break;
+      case 'p':
+        if(args_info->proxy_given)
+        {
+          fprintf(stderr,"curltunnel: `--proxy' (`-p') option given more than once\n");
+          clear_args();
+          exit(1);
+        }
+        args_info->proxy_given = 1;
+        args_info->proxy_arg = gengetopt_strdup(optarg);
+        break;
+      case 'u':
+        if(args_info->user_given)
+        {
+          fprintf(stderr,"curltunnel: `--user' (`-u') option given more than once\n");
+          clear_args();
+          exit(1);
+        }
+        args_info->user_given = 1;
+        args_info->user_arg = gengetopt_strdup(optarg);
+        break;
+      case 'p':
+        if(args_info->pass_given)
+        {
+          fprintf(stderr,"curltunnel: `--pass' (`-s') option given more than once\n);
+          clear_args();
+          exit(1);
+        }
+        args_info->pass_given = 1;
+        args_info->pass_arg = gengetopt_strdup(optarg);
+        break;
+      case 'd':
+        if(args_info->dest_given)
+        {
+          fprintf(stderr,"curltunnel: `--dest' (`-d') option given more than once\n");
+          clear_args();
+          exit(1);
+        }
+        args_info->dest_given = 1;
+        args_info->dest_arg = gengetopt_strdup(optarg);
+        break;
+    }
+  }
+
+  if(!args_info->proxy_given && !args_info->dest_given)
+  {
+    clear_args();
+    print_options();
+    exit(0);
+  }
+
+  if(args_info->proxy_given)
+  {
+    char *phost;
+    int pport;
+
+    phost = malloc(50+1);
+
+    r = sscanf(args_info->proxy_arg, "%50[^:]:%5u", phost, &pport);
+    if(r==2)
+    {
+      args_info->proxyhost_arg=phost;
+      args_info->proxyport_arg=pport;
+      args_info->proxyhost_given = 1;
+      args_info->proxyport_given = 1;
+    }
+    else
+    {
+      fprintf(stderr,"curltunnel: Couldn't find your proxy hostname/ip\n");
+      clear_args();
+      exit(1);
+    }
+  }
+    return 0;
+}
 
 int fd_read(int fd, void *buf, size_t len)
 {
