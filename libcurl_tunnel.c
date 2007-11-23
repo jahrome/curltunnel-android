@@ -104,8 +104,9 @@ int main(int argc, char *argv[])
 
   /* Hard coded for convenience currently. Obviously we'll change this to
      read from the command line at some point */
-  curl_easy_setopt(hnd, CURLOPT_URL, "http://labb.contactor.se:443/");
-  curl_easy_setopt(hnd, CURLOPT_PROXY, "localhost:80");
+  curl_easy_setopt(hnd, CURLOPT_URL, "http://godeater.dyndns.org:443/");
+  curl_easy_setopt(hnd, CURLOPT_PROXY, "10.1.23.219:8080");
+  curl_easy_setopt(hnd, CURLOPT_PROXYUSERPWD, "gbchlb:X344ekl25");
   curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.16.4 (i686-pc-linux-gnu) libcurl/7.16.4 GnuTLS/1.4.4 zlib/1.2.3 c-ares/1.4.0");
   curl_easy_setopt(hnd, CURLOPT_HTTPPROXYTUNNEL, 1);
   curl_easy_setopt(hnd, CURLOPT_CONNECT_ONLY, 1);
