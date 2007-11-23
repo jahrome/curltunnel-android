@@ -80,7 +80,7 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
       { NULL, 0, NULL, 0}
     };
 
-    c = getopt_long(argc,argv,"hv:p:u:d", long_options, &option_index);
+    c = getopt_long(argc,argv,"hvp:u:d:", long_options, &option_index);
 
     if(c==-1) break;
 
@@ -128,7 +128,7 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
     }
   }
 
-  if(!args_info->proxy_given && !args_info->dest_given)
+  if(!args_info->proxy_given || !args_info->dest_given)
   {
     clear_args();
     print_options();
