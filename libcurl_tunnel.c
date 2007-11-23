@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
   CURLcode ret;
   long sckt;
   struct gengetopt_args_info args_info;
-  
+
   command_line_parser(argc,argv,&args_info);
 
   CURL *hnd = curl_easy_init();
@@ -246,7 +246,8 @@ int main(int argc, char *argv[])
   curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.16.4 (i686-pc-linux-gnu) libcurl/7.16.4 GnuTLS/1.4.4 zlib/1.2.3 c-ares/1.4.0");
   curl_easy_setopt(hnd, CURLOPT_HTTPPROXYTUNNEL, 1);
   curl_easy_setopt(hnd, CURLOPT_CONNECT_ONLY, 1);
-  curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1);
+  if(args_info.verbose_given)
+    curl_easy_setopt(hnd, CURLOPT_VERBOSE, 1);
   ret = curl_easy_perform(hnd);
 
   if(ret == CURLE_OK)
