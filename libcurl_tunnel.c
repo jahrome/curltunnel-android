@@ -221,7 +221,7 @@ static void wait_and_act(int sockfd, int verbose)
     /* use FD_ISSET() to check what happened, then read/write accordingly */
     if (FD_ISSET(fileno(stdin), &fdread))
     {
-      rc=fdcopy(stdin),sockfd);
+      rc=fdcopy(fileno(stdin),sockfd);
       if(!rc)
         break;
       if(verbose)
