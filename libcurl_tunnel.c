@@ -218,22 +218,25 @@ static void wait_and_act(int sockfd, int verbose)
       if(verbose)
           fprintf(stderr,"VERBOSE: Timeout after %ldms\n", timeout_ms);
     }
-    /* use FD_ISSET() to check what happened, then read/write accordingly */
-    if (FD_ISSET(fileno(stdin), &fdread))
+    else
     {
-      rc=fdcopy(fileno(stdin),sockfd);
-      if(!rc)
-        break;
-      if(verbose)
-        fprintf(stderr,"VERBOSE: Sent %d bytes from stdin to socket\n", rc);
-    }
-    if (FD_ISSET(sockfd,&fdread))
-    {
-      rc=fdcopy(sockfd,fileno(stdout));
-      if(!rc)
-        break;
-      if(verbose)
-        fprintf(stderr,"VERBOSE: Sent %d bytes from socket to stdin\n", rc);
+      /* use FD_ISSET() to check what happened, then read/write accordingly */
+      if (FD_ISSET(fileno(stdin), &fdread))
+      {
+        rc=fdcopy(fileno(stdin),sockfd);
+        if(!rc)
+          break;
+        if(verbose)
+          fprintf(stderr,"VERBOSE: Sent %d bytes from stdin to socket\n", rc);
+      }
+      if (FD_ISSET(sockfd,&fdread))
+      {
+        rc=fdcopy(sockfd,fileno(stdout));
+        if(!rc)
+          break;
+        if(verbose)
+          fprintf(stderr,"VERBOSE: Sent %d bytes from socket to stdin\n", rc);
+      }
     }
   }
 }
