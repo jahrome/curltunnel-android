@@ -3,9 +3,12 @@
 #include <sys/select.h>
 #include <curl/curl.h>
 #include <getopt.h>
+#include <unistd.h>
 
 #define _FILE_OFFSET_BITS 64 /* for curl_off_t magic */
 #define SIZE 655536
+
+#define VERSION "0.1-dev"
 
 struct gengetopt_args_info {
   char *proxy_arg;
@@ -19,9 +22,9 @@ struct gengetopt_args_info {
   int dest_given;
 };
 
-void print_options(void)
+static void print_options(void)
 {
-  printf("curltunnel\nCopyright 2007 curltunnel Project\nV0.1\n"
+  printf("curltunnel\nCopyright 2007 curltunnel Project\nV " VERSION "\n"
       "\n"
       "-h       --help            Print help and exit\n"
       "-p       --proxy=STRING    Proxy host:port combination to connect to\n"
@@ -44,10 +47,9 @@ static char * gengetopt_strdup(char *s)
   return n;
 }
 
-int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info *args_info)
+static int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info *args_info)
 {
   int c;
-  int r;
 
 #define clear_args()\
 {\
@@ -138,21 +140,21 @@ int command_line_parser(int argc, char * const *argv, struct gengetopt_args_info
   return 0;
 }
 
-int fd_read(int fd, void *buf, size_t len)
+static int fd_read(int fd, void *buf, size_t len)
 {
   int bytes_read;
   bytes_read = read(fd,buf,len);
   return bytes_read;
 }
 
-int fd_write(int fd, void *buf, size_t len)
+static int fd_write(int fd, void *buf, size_t len)
 {
   int bytes_written;
   bytes_written = write(fd,buf,len);
   return bytes_written;
 }
 
-int fdcopy(int fdin, int fdout)
+static int fdcopy(int fdin, int fdout)
 {
   char buf[SIZE];
   int n;
@@ -175,11 +177,11 @@ int fdcopy(int fdin, int fdout)
   return 0;
 }
 
-void wait_and_act(int sockfd)
+static void wait_and_act(int sockfd, int verbose)
 {
   struct timeval timeout;
   int rc; /* select() return code */
-  long timeout_ms = 1000;
+  long timeout_ms = 10000;
 
   fd_set fdread;
   fd_set fdwrite;
@@ -213,17 +215,25 @@ void wait_and_act(int sockfd)
     if(rc==0){
       /* timeout! */
       /* fprintf(stderr,"Timeout\n"); */
+      if(verbose)
+          fprintf(stderr,"VERBOSE: Timeout after %ldms\n", timeout_ms);
     }
     /* use FD_ISSET() to check what happened, then read/write accordingly */
     if (FD_ISSET(fileno(stdin), &fdread))
     {
-      if(fdcopy(fileno(stdin),sockfd))
+      rc=fdcopy(stdin),sockfd);
+      if(!rc)
         break;
+      if(verbose)
+        fprintf(stderr,"VERBOSE: Sent %d bytes from stdin to socket\n", rc);
     }
     if (FD_ISSET(sockfd,&fdread))
     {
-      if(fdcopy(sockfd,fileno(stdout)))
+      rc=fdcopy(sockfd,fileno(stdout));
+      if(!rc)
         break;
+      if(verbose)
+        fprintf(stderr,"VERBOSE: Sent %d bytes from socket to stdin\n", rc);
     }
   }
 }
@@ -238,12 +248,10 @@ int main(int argc, char *argv[])
 
   CURL *hnd = curl_easy_init();
 
-  /* Hard coded for convenience currently. Obviously we'll change this to
-     read from the command line at some point */
   curl_easy_setopt(hnd, CURLOPT_URL, args_info.dest_arg);
   curl_easy_setopt(hnd, CURLOPT_PROXY, args_info.proxy_arg);
   curl_easy_setopt(hnd, CURLOPT_PROXYUSERPWD, args_info.user_arg);
-  curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curl/7.16.4 (i686-pc-linux-gnu) libcurl/7.16.4 GnuTLS/1.4.4 zlib/1.2.3 c-ares/1.4.0");
+  curl_easy_setopt(hnd, CURLOPT_USERAGENT, "curltunnel/" VERSION);
   curl_easy_setopt(hnd, CURLOPT_HTTPPROXYTUNNEL, 1);
   curl_easy_setopt(hnd, CURLOPT_CONNECT_ONLY, 1);
   if(args_info.verbose_given)
@@ -254,14 +262,14 @@ int main(int argc, char *argv[])
   {
     /* Extract socket, and select() */
     ret = curl_easy_getinfo(hnd, CURLINFO_LASTSOCKET, &sckt);
+  }
     if((sckt==-1) || ret){
       fprintf(stderr,"[ERR] Couldn't get socket");
-      return(-1);
-    }
+    return 1;
   }
 
-  wait_and_act((int)sckt);
-
+  wait_and_act((int)sckt, args_info.verbose_given);
 
   curl_easy_cleanup(hnd);
+  return 0;
 }
